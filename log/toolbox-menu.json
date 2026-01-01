@@ -1,0 +1,249 @@
+﻿{
+    "_generated_at":  "2026-01-01T02:56:34.5877987-08:00",
+    "tools":  [
+                  {
+                      "toolname":  "anthropic-api-call",
+                      "paths":  {
+                                    "root":  "anthropic-api-call",
+                                    "instructions":  "anthropic-api-call/anthropic-api-call-instructions",
+                                    "examples":  "anthropic-api-call/anthropic-api-call-examples"
+                                },
+                      "information":  {
+                                          "NAME":  "anthropic-api-call",
+                                          "Description":  "Calls Anthropic Messages API with Claude models, specifically optimized for Opus 4.5. This tool reads a request configuration from .cauldron containing the model selection, messages array, system prompt, and generation parameters. It makes an authenticated API call to Anthropic\u0027s /v1/messages endpoint using the ANTHROPIC_API_KEY environment variable. The response is written to .outbox as a JSON file containing the model output, usage statistics, stop reason, and metadata. Supports all Claude models including claude-opus-4.5, claude-sonnet-4.5, and extended thinking modes. Never logs or writes the API key anywhere. Used for A-Team collaboration between different Claude instances and for high-reasoning tasks requiring Opus 4.5\u0027s extended thinking capabilities.",
+                                          "Requirements":  [
+                                                               {
+                                                                   "name":  "anthropic-api-call.request.json",
+                                                                   "path":  ".cauldron/anthropic-api-call.request.json",
+                                                                   "type":  "json",
+                                                                   "schema":  {
+                                                                                  "model":  "string optional default claude-opus-4.5-20250514",
+                                                                                  "messages":  "array required - objects with role and content",
+                                                                                  "system":  "string optional - system prompt",
+                                                                                  "max_tokens":  "integer optional default 16000",
+                                                                                  "temperature":  "number optional default 1.0",
+                                                                                  "thinking":  "object optional - extended_thinking settings",
+                                                                                  "metadata":  "object optional - user_id and other tracking"
+                                                                              }
+                                                               }
+                                                           ],
+                                          "Stacks_with":  [
+                                                              "openai-api-call",
+                                                              "docx-formatting-brief",
+                                                              "docx-formatting-declaration"
+                                                          ],
+                                          "Historical_Runs":  [
+
+                                                              ],
+                                          "Common_Uses":  [
+                                                              "Extended thinking tasks requiring deep reasoning",
+                                                              "A-Team collaboration with multiple Claude instances",
+                                                              "Complex legal analysis using Opus 4.5",
+                                                              "High-stakes decision making with budget visibility"
+                                                          ],
+                                          "Needs_Improvements":  false,
+                                          "Model_Notes":  [
+                                                              "REQUIRES ANTHROPIC_API_KEY environment variable",
+                                                              "REQUIRES httpx Python package",
+                                                              "max_tokens is REQUIRED by Anthropic API (defaults to 16000)",
+                                                              "For extended thinking, use thinking object with type and budget",
+                                                              "Model names: claude-opus-4.5-20250514, claude-sonnet-4.5-20250514",
+                                                              "Use Opus 4.5 for complex reasoning, Sonnet 4.5 for cost efficiency"
+                                                          ],
+                                          "CLASS":  "api-integration",
+                                          "Paired":  [
+                                                         "openai-api-call"
+                                                     ],
+                                          "Requested_Edits":  [
+
+                                                              ]
+                                      }
+                  },
+                  {
+                      "toolname":  "docx-formatting-9ca",
+                      "paths":  {
+                                    "root":  "docx-formatting-9ca",
+                                    "instructions":  "docx-formatting-9ca/docx-formatting-9ca-instructions",
+                                    "examples":  "docx-formatting-9ca/docx-formatting-9ca-examples"
+                                },
+                      "information":  {
+                                          "NAME":  "docx-formatting-9ca",
+                                          "Description":  "Converts 9th Circuit court document templates from DOCX format to XML format with structured placeholder fields. Takes Microsoft Word templates for cover pages, declarations, and other legal documents, extracts the structure and content, identifies placeholder locations for variable information (case numbers, party names, dates, etc.), and outputs clean XML templates that can be programmatically filled with case-specific details. Preserves 9th Circuit formatting requirements including 14pt font, 1-inch margins, and proper document structure. Generates both the XML template and a companion JSON schema file that defines all placeholder fields, their types, validation rules, and examples. Designed specifically for Tyler Lofall\u0027s Pro Se litigation workflow where he needs to quickly generate compliant court filings from reusable templates.",
+                                          "Requirements":  [
+                                                               {
+                                                                   "name":  "docx-formatting-9ca.config.json",
+                                                                   "path":  ".cauldron/docx-formatting-9ca.config.json",
+                                                                   "type":  "json",
+                                                                   "schema":  {
+                                                                                  "template_type":  "string required - \u0027cover_page\u0027 or \u0027declaration\u0027",
+                                                                                  "input_docx":  "string required - filename of DOCX in .cauldron/",
+                                                                                  "output_name":  "string required - base name for output files",
+                                                                                  "placeholder_style":  "string optional default \u0027{{FIELD}}\u0027 - placeholder format",
+                                                                                  "preserve_formatting":  "boolean optional default true - keep formatting info",
+                                                                                  "include_schema":  "boolean optional default true - generate schema file"
+                                                                              }
+                                                               },
+                                                               {
+                                                                   "name":  "[template].docx",
+                                                                   "path":  ".cauldron/[template].docx",
+                                                                   "type":  "docx",
+                                                                   "schema":  "Valid Microsoft Word document following 9th Circuit formatting"
+                                                               }
+                                                           ],
+                                          "Stacks_with":  [
+                                                              "docx-fill",
+                                                              "document-validator"
+                                                          ],
+                                          "Historical_Runs":  [
+
+                                                              ],
+                                          "Common_Uses":  [
+                                                              "Converting cover page templates for 9th Circuit filings",
+                                                              "Converting declaration templates to XML format",
+                                                              "Creating reusable templates from existing DOCX documents",
+                                                              "Standardizing document formatting across multiple filings",
+                                                              "Preparing templates for automated document generation"
+                                                          ],
+                                          "Needs_Improvements":  false,
+                                          "Model_Notes":  [
+                                                              "Input DOCX must be in .cauldron/ directory",
+                                                              "Output XML and schema go to .outbox/",
+                                                              "Supports cover_page and declaration template types",
+                                                              "Placeholder format is {{FIELD}} by default",
+                                                              "Schema file defines all placeholders with types and validation",
+                                                              "PowerShell primary - no external dependencies required",
+                                                              "Preserves 9th Circuit formatting requirements"
+                                                          ],
+                                          "CLASS":  "document-processing",
+                                          "Paired":  [
+                                                         "docx-fill"
+                                                     ],
+                                          "Requested_Edits":  [
+
+                                                              ]
+                                      }
+                  },
+                  {
+                      "toolname":  "model-call",
+                      "paths":  {
+                                    "root":  "model-call",
+                                    "instructions":  "model-call/model-call-instructions",
+                                    "examples":  "model-call/model-call-examples"
+                                },
+                      "information":  {
+                                          "NAME":  "model-call",
+                                          "Description":  "Universal tool for calling Anthropic Claude models (Opus 4.5, Sonnet 4.5) with complete control over all API parameters. Handles both normal API calls for general tasks and specialized tool-creation calls with templated system prompts and placeholder substitution. Supports extended thinking with configurable token budgets up to 64,000 for Opus or 128,000 for Sonnet, web search for accessing current information, tool use for calling external functions, and multi-turn conversations. This is the foundation model-call tool that all other Anthropic API integrations should reference. Reads request configuration from .cauldron specifying model choice, thinking settings, temperature, messages, and optional features. Makes authenticated HTTPS request to Anthropic\u0027s /v1/messages endpoint using ANTHROPIC_API_KEY from environment variable or config. Writes complete response including thinking content, message content, token usage, and metadata to .outbox as JSON. Creates audit receipt for tracking. Designed for Tyler Lofall\u0027s Pro Se litigation workflow and A-Team collaboration between different AI models.",
+                                          "Requirements":  [
+                                                               {
+                                                                   "name":  "model-call.request.json",
+                                                                   "path":  ".cauldron/model-call.request.json",
+                                                                   "type":  "json",
+                                                                   "schema":  {
+                                                                                  "api_key":  "string optional - API key (uses ANTHROPIC_API_KEY env var if not provided)",
+                                                                                  "model":  "string required - \u0027opus\u0027 (64K max) or \u0027sonnet\u0027 (128K max)",
+                                                                                  "mode":  "string optional default \u0027normal\u0027 - \u0027normal\u0027 for direct calls or \u0027template\u0027 for tool creation",
+                                                                                  "max_tokens":  "integer optional - Response length limit (auto-set based on model if not specified)",
+                                                                                  "temperature":  "number optional default 1.0 - Randomness from 0.0 to 1.0",
+                                                                                  "thinking.enabled":  "boolean optional default true - Enable extended thinking",
+                                                                                  "thinking.budget_tokens":  "integer optional default 32000 - Tokens allocated for thinking process",
+                                                                                  "system":  "string optional - System prompt (can include {{PLACEHOLDERS}} in template mode)",
+                                                                                  "messages":  "array required - Message objects with role and content",
+                                                                                  "placeholders":  "object optional - Key-value pairs for template substitution",
+                                                                                  "web_search":  "boolean optional default false - Enable web search capability",
+                                                                                  "tools":  "array optional - Tool definitions for tool use"
+                                                                              }
+                                                               }
+                                                           ],
+                                          "Stacks_with":  [
+
+                                                          ],
+                                          "Historical_Runs":  [
+
+                                                              ],
+                                          "Common_Uses":  [
+                                                              "Creating new tools using templated system prompts with Opus",
+                                                              "Processing legal documents with extended thinking enabled",
+                                                              "A-Team collaboration between Claude and other AI models",
+                                                              "Web-augmented research requiring current information",
+                                                              "Multi-turn conversations with full context history",
+                                                              "High-volume document processing with Sonnet for cost efficiency",
+                                                              "Complex reasoning tasks requiring Opus intelligence",
+                                                              "Tool use and MCP server integration for extended capabilities"
+                                                          ],
+                                          "Needs_Improvements":  false,
+                                          "Model_Notes":  [
+                                                              "Opus max_tokens: 64,000 - use for complex reasoning and tool creation",
+                                                              "Sonnet max_tokens: 128,000 - use for general tasks and high volume",
+                                                              "Extended thinking budget can go up to max_tokens for each model",
+                                                              "API key from ANTHROPIC_API_KEY environment variable or config file",
+                                                              "Template mode auto-loads tool creation system prompt",
+                                                              "Normal mode for direct API calls without templates",
+                                                              "Web search requires beta flag: web-search-2025-03-05",
+                                                              "Tool use requires proper tool definitions in request",
+                                                              "Always includes audit receipt in .outbox/_receipts/",
+                                                              "Supports temperature 0 for deterministic outputs",
+                                                              "CLASS is model-call - top tier for model API integrations"
+                                                          ],
+                                          "CLASS":  "model-call",
+                                          "Paired":  [
+
+                                                     ],
+                                          "Requested_Edits":  [
+
+                                                              ]
+                                      }
+                  },
+                  {
+                      "toolname":  "openai-api-call",
+                      "paths":  {
+                                    "root":  "openai-api-call",
+                                    "instructions":  "openai-api-call/openai-api-call-instructions",
+                                    "examples":  "openai-api-call/openai-api-call-examples"
+                                },
+                      "information":  {
+                                          "NAME":  "openai-api-call",
+                                          "Description":  "Calls OpenAI Responses API with stored prompts. This tool reads a request configuration from .cauldron containing the prompt_id, model selection, and any variables needed. It then makes an authenticated API call to OpenAI\u0027s /v1/responses endpoint using the OPENAI_API_KEY environment variable. The response is written to .outbox as a JSON file containing the model output, usage statistics, and metadata. Supports GPT-5.2 with xhigh reasoning effort. Never logs or writes the API key anywhere. Used for A-Team collaboration between Claude and GPT-5.2.",
+                                          "Requirements":  [
+                                                               {
+                                                                   "name":  "openai-api-call.request.json",
+                                                                   "path":  ".cauldron/openai-api-call.request.json",
+                                                                   "type":  "json",
+                                                                   "schema":  {
+                                                                                  "prompt_id":  "string required pmpt_xxx format",
+                                                                                  "version":  "string optional",
+                                                                                  "variables":  "object optional",
+                                                                                  "model":  "string optional default gpt-5.2",
+                                                                                  "reasoning_effort":  "string optional xhigh recommended",
+                                                                                  "input":  "string optional additional message"
+                                                                              }
+                                                               }
+                                                           ],
+                                          "Stacks_with":  [
+                                                              "docx-formatting-brief",
+                                                              "docx-formatting-declaration"
+                                                          ],
+                                          "Historical_Runs":  [
+
+                                                              ],
+                                          "Common_Uses":  [
+                                                              "Calling saved legal drafting prompts",
+                                                              "Generating structured arguments from templates",
+                                                              "A-Team collaboration Claude to GPT-5.2"
+                                                          ],
+                                          "Needs_Improvements":  false,
+                                          "Model_Notes":  [
+                                                              "REQUIRES OPENAI_API_KEY environment variable",
+                                                              "REQUIRES httpx Python package",
+                                                              "Use gpt-5.2 with xhigh, not Pro (too expensive)"
+                                                          ],
+                                          "CLASS":  "api-integration",
+                                          "Paired":  [
+
+                                                     ],
+                                          "Requested_Edits":  [
+
+                                                              ]
+                                      }
+                  }
+              ]
+}

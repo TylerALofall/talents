@@ -1,0 +1,46 @@
+{
+  "NAME": "anthropic-api-call",
+  "Description": "Calls Anthropic Messages API with Claude models, specifically optimized for Opus 4.5. This tool reads a request configuration from .cauldron containing the model selection, messages array, system prompt, and generation parameters. It makes an authenticated API call to Anthropic's /v1/messages endpoint using the ANTHROPIC_API_KEY environment variable. The response is written to .outbox as a JSON file containing the model output, usage statistics, stop reason, and metadata. Supports all Claude models including claude-opus-4.5, claude-sonnet-4.5, and extended thinking modes. Never logs or writes the API key anywhere. Used for A-Team collaboration between different Claude instances and for high-reasoning tasks requiring Opus 4.5's extended thinking capabilities.",
+  "Requirements": [
+    {
+      "name": "anthropic-api-call.request.json",
+      "path": ".cauldron/anthropic-api-call.request.json",
+      "type": "json",
+      "schema": {
+        "model": "string optional default claude-opus-4.5-20250514",
+        "messages": "array required - objects with role and content",
+        "system": "string optional - system prompt",
+        "max_tokens": "integer optional default 16000",
+        "temperature": "number optional default 1.0",
+        "thinking": "object optional - extended_thinking settings",
+        "metadata": "object optional - user_id and other tracking"
+      }
+    }
+  ],
+  "Stacks_with": [
+    "openai-api-call",
+    "docx-formatting-brief",
+    "docx-formatting-declaration"
+  ],
+  "Historical_Runs": [],
+  "Common_Uses": [
+    "Extended thinking tasks requiring deep reasoning",
+    "A-Team collaboration with multiple Claude instances",
+    "Complex legal analysis using Opus 4.5",
+    "High-stakes decision making with budget visibility"
+  ],
+  "Needs_Improvements": false,
+  "Model_Notes": [
+    "REQUIRES ANTHROPIC_API_KEY environment variable",
+    "REQUIRES httpx Python package",
+    "max_tokens is REQUIRED by Anthropic API (defaults to 16000)",
+    "For extended thinking, use thinking object with type and budget",
+    "Model names: claude-opus-4.5-20250514, claude-sonnet-4.5-20250514",
+    "Use Opus 4.5 for complex reasoning, Sonnet 4.5 for cost efficiency"
+  ],
+  "CLASS": "api-integration",
+  "Paired": [
+    "openai-api-call"
+  ],
+  "Requested_Edits": []
+}

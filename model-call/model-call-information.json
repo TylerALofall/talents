@@ -1,0 +1,54 @@
+{
+  "NAME": "model-call",
+  "Description": "Universal tool for calling Anthropic Claude models (Opus 4.5, Sonnet 4.5) with complete control over all API parameters. Handles both normal API calls for general tasks and specialized tool-creation calls with templated system prompts and placeholder substitution. Supports extended thinking with configurable token budgets up to 64,000 for Opus or 128,000 for Sonnet, web search for accessing current information, tool use for calling external functions, and multi-turn conversations. This is the foundation model-call tool that all other Anthropic API integrations should reference. Reads request configuration from .cauldron specifying model choice, thinking settings, temperature, messages, and optional features. Makes authenticated HTTPS request to Anthropic's /v1/messages endpoint using ANTHROPIC_API_KEY from environment variable or config. Writes complete response including thinking content, message content, token usage, and metadata to .outbox as JSON. Creates audit receipt for tracking. Designed for Tyler Lofall's Pro Se litigation workflow and A-Team collaboration between different AI models.",
+  "Requirements": [
+    {
+      "name": "model-call.request.json",
+      "path": ".cauldron/model-call.request.json",
+      "type": "json",
+      "schema": {
+        "api_key": "string optional - API key (uses ANTHROPIC_API_KEY env var if not provided)",
+        "model": "string required - 'opus' (64K max) or 'sonnet' (128K max)",
+        "mode": "string optional default 'normal' - 'normal' for direct calls or 'template' for tool creation",
+        "max_tokens": "integer optional - Response length limit (auto-set based on model if not specified)",
+        "temperature": "number optional default 1.0 - Randomness from 0.0 to 1.0",
+        "thinking.enabled": "boolean optional default true - Enable extended thinking",
+        "thinking.budget_tokens": "integer optional default 32000 - Tokens allocated for thinking process",
+        "system": "string optional - System prompt (can include {{PLACEHOLDERS}} in template mode)",
+        "messages": "array required - Message objects with role and content",
+        "placeholders": "object optional - Key-value pairs for template substitution",
+        "web_search": "boolean optional default false - Enable web search capability",
+        "tools": "array optional - Tool definitions for tool use"
+      }
+    }
+  ],
+  "Stacks_with": [],
+  "Historical_Runs": [],
+  "Common_Uses": [
+    "Creating new tools using templated system prompts with Opus",
+    "Processing legal documents with extended thinking enabled",
+    "A-Team collaboration between Claude and other AI models",
+    "Web-augmented research requiring current information",
+    "Multi-turn conversations with full context history",
+    "High-volume document processing with Sonnet for cost efficiency",
+    "Complex reasoning tasks requiring Opus intelligence",
+    "Tool use and MCP server integration for extended capabilities"
+  ],
+  "Needs_Improvements": false,
+  "Model_Notes": [
+    "Opus max_tokens: 64,000 - use for complex reasoning and tool creation",
+    "Sonnet max_tokens: 128,000 - use for general tasks and high volume",
+    "Extended thinking budget can go up to max_tokens for each model",
+    "API key from ANTHROPIC_API_KEY environment variable or config file",
+    "Template mode auto-loads tool creation system prompt",
+    "Normal mode for direct API calls without templates",
+    "Web search requires beta flag: web-search-2025-03-05",
+    "Tool use requires proper tool definitions in request",
+    "Always includes audit receipt in .outbox/_receipts/",
+    "Supports temperature 0 for deterministic outputs",
+    "CLASS is model-call - top tier for model API integrations"
+  ],
+  "CLASS": "model-call",
+  "Paired": [],
+  "Requested_Edits": []
+}

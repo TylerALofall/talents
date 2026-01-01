@@ -1,0 +1,52 @@
+{
+  "NAME": "docx-formatting-9ca",
+  "Description": "Converts 9th Circuit court document templates from DOCX format to XML format with structured placeholder fields. Takes Microsoft Word templates for cover pages, declarations, and other legal documents, extracts the structure and content, identifies placeholder locations for variable information (case numbers, party names, dates, etc.), and outputs clean XML templates that can be programmatically filled with case-specific details. Preserves 9th Circuit formatting requirements including 14pt font, 1-inch margins, and proper document structure. Generates both the XML template and a companion JSON schema file that defines all placeholder fields, their types, validation rules, and examples. Designed specifically for Tyler Lofall's Pro Se litigation workflow where he needs to quickly generate compliant court filings from reusable templates.",
+  "Requirements": [
+    {
+      "name": "docx-formatting-9ca.config.json",
+      "path": ".cauldron/docx-formatting-9ca.config.json",
+      "type": "json",
+      "schema": {
+        "template_type": "string required - 'cover_page' or 'declaration'",
+        "input_docx": "string required - filename of DOCX in .cauldron/",
+        "output_name": "string required - base name for output files",
+        "placeholder_style": "string optional default '{{FIELD}}' - placeholder format",
+        "preserve_formatting": "boolean optional default true - keep formatting info",
+        "include_schema": "boolean optional default true - generate schema file"
+      }
+    },
+    {
+      "name": "[template].docx",
+      "path": ".cauldron/[template].docx",
+      "type": "docx",
+      "schema": "Valid Microsoft Word document following 9th Circuit formatting"
+    }
+  ],
+  "Stacks_with": [
+    "docx-fill",
+    "document-validator"
+  ],
+  "Historical_Runs": [],
+  "Common_Uses": [
+    "Converting cover page templates for 9th Circuit filings",
+    "Converting declaration templates to XML format",
+    "Creating reusable templates from existing DOCX documents",
+    "Standardizing document formatting across multiple filings",
+    "Preparing templates for automated document generation"
+  ],
+  "Needs_Improvements": false,
+  "Model_Notes": [
+    "Input DOCX must be in .cauldron/ directory",
+    "Output XML and schema go to .outbox/",
+    "Supports cover_page and declaration template types",
+    "Placeholder format is {{FIELD}} by default",
+    "Schema file defines all placeholders with types and validation",
+    "PowerShell primary - no external dependencies required",
+    "Preserves 9th Circuit formatting requirements"
+  ],
+  "CLASS": "document-processing",
+  "Paired": [
+    "docx-fill"
+  ],
+  "Requested_Edits": []
+}

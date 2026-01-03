@@ -1,410 +1,387 @@
-<#
-.SYNOPSIS
-    Packs and unpacks directories to/from a single markdown file with tagged content blocks.
-.DESCRIPTION
-    PACK MODE: Recursively collects files from a directory and stores them in a single markdown file
-    with START-CODE/END-CODE tags. For JSON files, extracts metadata fields.
-    
-    UNPACK MODE: Reads a packed markdown file and recreates the original directory structure.
-    With new features for selective unpacking.
-#>
+untitled:Untitled-2 {"typeId":""}
+Planning / decisions (what I’m changing and why)
 
+Unpack should prompt and let you extract only some files
+On unpack, the script will first read the packed file and build an ordered list of entries (in the same order they were packed).
+It will print a numbered list of file paths (1..N).
+It will prompt you to choose which ones to extract using a simple selection syntax:
+all
+1,3,7
+2-5
+1,2-4,9
+For automation (called from another script), prompting can break runs, so I’m adding options that still keep only two commands (pack/unpack) but let you bypass prompts:
+-All (extract everything, no selection prompt)
+-Select "1,3-5" (non-interactive selection)
+-NonInteractive (error if it would prompt)
+2. Consistent naming: prepend the tool name to extracted file names
+
+On unpack, every extracted file’s leaf name is renamed to: ToolName=OriginalFileName Example: config.ps1 -> VEND=config.ps1
+The directory structure under the packed relative path is preserved; only the final file name is changed.
+If a file already starts with ToolName= it won’t double-prefix.
+3. Each packed stack gets its own output folder automatically
+
+On unpack, by default it will create a subfolder under TargetPath named ToolName, and extract into that: TargetPath\ToolName...
+If you don’t want that (because you already pass a tool folder), you can use -NoToolDir.
+4. Where ToolName comes from
+
+On pack, you can pass -ToolName "VEND". The packed file stores a readable header line: TOOLNAME: VEND
+On unpack, if ToolName is not passed:
+It uses TOOLNAME from the packed header if present
+Otherwise it prompts you (unless -NonInteractive)
+5. Overwrite behavior
+
+pack:
+refuses to overwrite the packed output file unless -Force is provided
+unpack:
+if a destination file already exists:
+interactive mode: prompts (Y/N/All/SkipAll)
+non-interactive mode: refuses unless -Force is provided
+6. Keep it human-readable (no base64) and avoid forcing UTF-8
+
+Content is stored as plain text between markers.
+Reads/writes use PowerShell “Default” encoding (not UTF-8) as you requested.
+This is text-mode only; it is not for binary files.
+7. Markers + numbering requirement
+
+The packed file starts with a single-line marker containing “fuckk”.
+The packed file ends with a single-line marker containing “fuckk”.
+Each file entry includes “x of y” in both FILE_START and FILE_END lines.
 param(
-    [Parameter(Mandatory=$false)]
-    [ValidateSet("pack", "unpack", "menu")]
-    [string]$Mode = "menu",
-    
-    [Parameter(Mandatory=$false)]
-    [string]$SourcePath,
-    
-    [Parameter(Mandatory=$false)]
-    [string]$TargetPath,
-    
-    [Parameter(Mandatory=$false)]
-    [switch]$All,
-    
-    [Parameter(Mandatory=$false)]
-    [string]$Select,
-    
-    [Parameter(Mandatory=$false)]
-    [switch]$NonInteractive
+[Parameter(Mandatory=$true, Position=0)]
+[ValidateSet('pack','unpack')]
+[string]$Command,
+
+[Parameter(Mandatory=$true, Position=1)]
+[string]$SourcePath,
+
+[Parameter(Mandatory=$true, Position=2)]
+[string]$TargetPath,
+
+[Parameter(Mandatory=$false)]
+[string]$ToolName,
+
+[Parameter(Mandatory=$false)]
+[switch]$Force,
+
+[Parameter(Mandatory=$false)]
+[switch]$All,
+
+[Parameter(Mandatory=$false)]
+[string]$Select,
+
+[Parameter(Mandatory=$false)]
+[switch]$NoToolDir,
+
+[Parameter(Mandatory=$false)]
+[switch]$NonInteractive
 )
 
-$START_TAG_PREFIX = "<<<begin-file-content_"
-$START_TAG_SUFFIX = ">>>"
-$END_TAG_PREFIX = "<<<end-file-content_"
-$END_TAG_SUFFIX = ">>>"
-$METADATA_FIELDS = @("NAME", "Description", "CLASS", "Requirements")
+$GLOBAL_BEGIN_MARKER = "<<<fuckk BEGIN PACKED CONTENT>>>"
+$GLOBAL_END_MARKER   = "<<<fuckk END PACKED CONTENT>>>"
 
-function Show-Menu {
-    Write-Host "`n=== FILE PACKER TOOL ===" -ForegroundColor Cyan
-    Write-Host "Packs directories to markdown files and unpacks them back" -ForegroundColor Gray
-    Write-Host ""
-    Write-Host "1. Pack Directory (Create single MD file)"
-    Write-Host "2. Unpack File (Recreate directory structure)"
-    Write-Host "3. Exit"
-    Write-Host ""
-    $choice = Read-Host "Select an option (1-3)"
-    return $choice
+function Ensure-Directory {
+param([Parameter(Mandatory=$true)][string]$Path)
+if (Test-Path -LiteralPath $Path) { return }
+New-Item -ItemType Directory -Path $Path -Force | Out-Null
 }
 
-function Get-UserConfirmation {
-    param([string]$Message)
-    $response = Read-Host "$Message (Y/N)"
-    return $response -eq 'Y' -or $response -eq 'y'
+function Get-RelativePath {
+param(
+[Parameter(Mandatory=$true)][string]$BasePath,
+[Parameter(Mandatory=$true)][string]$FullPath
+)
+
+$base = [System.IO.Path]::GetFullPath($BasePath)
+if (-not $base.EndsWith([System.IO.Path]::DirectorySeparatorChar)) {
+    $base += [System.IO.Path]::DirectorySeparatorChar
 }
 
-function Extract-JsonMetadata {
-    param([string]$FilePath)
-    
-    try {
-        $content = Get-Content -Path $FilePath -Raw -ErrorAction Stop
-        $json = $content | ConvertFrom-Json -ErrorAction Stop
-        
-        $metadata = @()
-        foreach ($field in $METADATA_FIELDS) {
-            if ($json.PSObject.Properties.Name -contains $field) {
-                $value = $json.$field
-                $metadata += "$field=$value"
-            }
+$full = [System.IO.Path]::GetFullPath($FullPath)
+
+$baseUri = [System.Uri]::new($base)
+$fullUri = [System.Uri]::new($full)
+
+$rel = $baseUri.MakeRelativeUri($fullUri).ToString()
+[System.Uri]::UnescapeDataString($rel)
+}
+
+function Parse-Selection {
+param(
+[Parameter(Mandatory=$true)][string]$Input,
+[Parameter(Mandatory=$true)][int]$Max
+)
+
+$s = $Input.Trim()
+if ($s -eq "") { return @() }
+if ($s -match '^(all|\*)$') { return 1..$Max }
+
+$set = New-Object 'System.Collections.Generic.HashSet[int]'
+$parts = $s -split ','
+
+foreach ($pRaw in $parts) {
+    $p = $pRaw.Trim()
+    if ($p -eq "") { continue }
+
+    if ($p -match '^\d+$') {
+        [void]$set.Add([int]$p)
+        continue
+    }
+
+    if ($p -match '^(?<a>\d+)\s*-\s*(?<b>\d+)$') {
+        $a = [int]$Matches['a']
+        $b = [int]$Matches['b']
+        if ($a -le $b) {
+            for ($i=$a; $i -le $b; $i++) { [void]$set.Add($i) }
+        } else {
+            for ($i=$a; $i -ge $b; $i--) { [void]$set.Add($i) }
         }
-        
-        if ($metadata.Count -gt 0) {
-            return "METADATA: " + ($metadata -join " | ")
-        }
+        continue
     }
-    catch {
-        # Not a valid JSON or error reading, return empty
-    }
-    
-    return ""
+
+    throw "Invalid selection token: '$p'"
 }
 
-function Pack-Directory {
-    param(
-        [string]$SourceDir,
-        [string]$OutputFile
-    )
-    
-    if (-not (Test-Path $SourceDir)) {
-        Write-Error "Source directory does not exist: $SourceDir"
-        return $false
+$arr = $set.ToArray() | Sort-Object
+$arr = @($arr | Where-Object { $_ -ge 1 -and $_ -le $Max })
+return $arr
+}
+
+function Get-ToolNameFromHeader {
+param([Parameter(Mandatory=$true)][string]$PackedText)
+
+$m = [regex]::Match($PackedText, '(?m)^\s*TOOLNAME:\s*(?<t>.+?)\s*$')
+if ($m.Success) { return $m.Groups['t'].Value.Trim() }
+return $null
+}
+
+function Pack-Path {
+param(
+[Parameter(Mandatory=$true)][string]$Source,
+[Parameter(Mandatory=$true)][string]$OutputFile,
+[Parameter(Mandatory=$false)][string]$Tool
+)
+
+if (-not (Test-Path -LiteralPath $Source)) {
+    throw "SourcePath does not exist: $Source"
+}
+
+$outputFull = [System.IO.Path]::GetFullPath($OutputFile)
+if ((Test-Path -LiteralPath $outputFull) -and (-not $Force)) {
+    throw "Refusing to overwrite existing packed file: $outputFull (use -Force to overwrite)"
+}
+
+$outputParent = Split-Path -Parent $outputFull
+if ($outputParent) { Ensure-Directory -Path $outputParent }
+
+$sourceItem = Get-Item -LiteralPath $Source
+$baseDir = $null
+$files = @()
+
+if ($sourceItem.PSIsContainer) {
+    $baseDir = [System.IO.Path]::GetFullPath($sourceItem.FullName)
+    $files = @(Get-ChildItem -LiteralPath $baseDir -File -Recurse | Sort-Object FullName)
+} else {
+    $baseDir = [System.IO.Path]::GetFullPath((Split-Path -Parent $sourceItem.FullName))
+    $files = @($sourceItem)
+}
+
+$files = @($files | Where-Object { [System.IO.Path]::GetFullPath($_.FullName) -ne $outputFull })
+$total = $files.Count
+
+$writer = New-Object System.IO.StreamWriter($outputFull, $false, [System.Text.Encoding]::Default)
+try {
+    $writer.WriteLine($GLOBAL_BEGIN_MARKER)
+    if ($Tool -and $Tool.Trim() -ne "") {
+        $writer.WriteLine("TOOLNAME: $($Tool.Trim())")
     }
-    
-    $includeSubDirs = Get-UserConfirmation "Include subdirectories?"
-    
-    Write-Host "`nPacking directory: $SourceDir" -ForegroundColor Green
-    Write-Host "Output file: $OutputFile" -ForegroundColor Green
-    if ($includeSubDirs) {
-        Write-Host "Mode: Recursive (including subdirectories)" -ForegroundColor Yellow
+    $writer.WriteLine()
+
+    for ($i = 0; $i -lt $total; $i++) {
+        $file = $files[$i]
+        $seq = "$($i + 1) of $total"
+        $rel = Get-RelativePath -BasePath $baseDir -FullPath $file.FullName
+
+        $writer.WriteLine("<<<FILE_START $seq>>> $rel")
+
+        $content = Get-Content -LiteralPath $file.FullName -Raw -Encoding Default
+        $writer.Write($content)
+
+        $writer.WriteLine()
+        $writer.WriteLine("<<<FILE_END $seq>>> $rel")
+        $writer.WriteLine()
+    }
+
+    $writer.WriteLine($GLOBAL_END_MARKER)
+}
+finally {
+    $writer.Dispose()
+}
+
+Write-Host "Packed $total file(s) to: $outputFull"
+}
+
+function Unpack-PackedFile {
+param(
+[Parameter(Mandatory=$true)][string]$InputFile,
+[Parameter(Mandatory=$true)][string]$OutputDir
+)
+
+if (-not (Test-Path -LiteralPath $InputFile -PathType Leaf)) {
+    throw "Input packed file does not exist: $InputFile"
+}
+
+$inputFull = [System.IO.Path]::GetFullPath($InputFile)
+$outRoot = [System.IO.Path]::GetFullPath($OutputDir)
+Ensure-Directory -Path $outRoot
+
+$text = Get-Content -LiteralPath $inputFull -Raw -Encoding Default
+
+$firstLine = ($text -split "\r?\n", 2)[0]
+if ($firstLine -ne $GLOBAL_BEGIN_MARKER) {
+    throw "Missing/invalid top marker. Expected first line: $GLOBAL_BEGIN_MARKER"
+}
+
+$textNoTrailingNewlines = $text.TrimEnd("`r","`n")
+$lastLine = ($textNoTrailingNewlines -split "\r?\n")[-1]
+if ($lastLine -ne $GLOBAL_END_MARKER) {
+    throw "Missing/invalid bottom marker. Expected last line: $GLOBAL_END_MARKER"
+}
+
+$toolFromHeader = Get-ToolNameFromHeader -PackedText $text
+if (-not $ToolName -or $ToolName.Trim() -eq "") {
+    if ($toolFromHeader) {
+        $ToolName = $toolFromHeader
     } else {
-        Write-Host "Mode: Non-recursive (top-level only)" -ForegroundColor Yellow
-    }
-    
-    # Create output directory if needed
-    $outputDir = Split-Path $OutputFile -Parent
-    if ($outputDir -and -not (Test-Path $outputDir)) {
-        New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
-    }
-    
-    # Start building the markdown content
-    $markdownContent = @()
-    $markdownContent += "# PACKED DIRECTORY: $SourceDir"
-    $markdownContent += "# CREATED: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
-    $markdownContent += "# PACKER VERSION: 1.0"
-    $markdownContent += ""
-    $markdownContent += "----------------------------------------"
-    $markdownContent += ""
-    
-    # Get files based on recursion preference
-    if ($includeSubDirs) {
-        $files = Get-ChildItem -Path $SourceDir -File -Recurse
-    } else {
-        $files = Get-ChildItem -Path $SourceDir -File
-    }
-    
-    $fileCount = 0
-    
-    foreach ($file in $files) {
-        $fileCount++
-        $relativePath = $file.FullName.Substring($SourceDir.Length + 1)
-        
-        Write-Host "Processing: $relativePath" -ForegroundColor Gray
-        
-        # Build the header tag
-        $headerTag = "$START_TAG_PREFIX$relativePath (numbering $fileCount of $($files.Count))$START_TAG_SUFFIX"
-        
-        # Add to markdown
-        $markdownContent += $headerTag
-        $markdownContent += ""
-        
-        # If JSON, extract metadata
-        if ($file.Extension -eq ".json") {
-            $metadata = Extract-JsonMetadata -FilePath $file.FullName
-            if ($metadata) {
-                $markdownContent += $metadata
-                $markdownContent += ""
-            }
+        if ($NonInteractive) {
+            throw "ToolName not provided and not found in packed header. Provide -ToolName or pack with TOOLNAME header."
         }
-        
-        # Add file content
-        $content = Get-Content -Path $file.FullName -Raw
-        $markdownContent += $content
-        
-        # Add end tag
-        $markdownContent += ""
-        $markdownContent += "$END_TAG_PREFIX$relativePath (numbering $fileCount of $($files.Count))$END_TAG_SUFFIX"
-        $markdownContent += ""
-        $markdownContent += "----------------------------------------"
-        $markdownContent += ""
+        $ToolName = (Read-Host "Enter ToolName to prefix extracted files (example: VEND)").Trim()
+        if ($ToolName -eq "") { throw "ToolName cannot be empty." }
     }
-    
-    # Write the complete markdown file
-    $markdownContent | Out-File -FilePath $OutputFile -Encoding UTF8
-    
-    Write-Host "`nSuccessfully packed $fileCount files to: $OutputFile" -ForegroundColor Green
-    return $true
+} else {
+    $ToolName = $ToolName.Trim()
 }
 
-function Get-FileListFromMarkdown {
-    param([string]$InputFile)
-    
-    if (-not (Test-Path $InputFile)) {
-        Write-Error "Input file does not exist: $InputFile"
-        return $null
-    }
-    
-    # Read the markdown file
-    $content = Get-Content -Path $InputFile -Raw
-    
-    # Regex pattern to match file blocks
-    $pattern = [regex]::Escape($START_TAG_PREFIX) + '(?<filepath>.*?)' + [regex]::Escape($START_TAG_SUFFIX) + 
-               '(?<content>.*?)' + 
-               [regex]::Escape($END_TAG_PREFIX) + '(?<endpath>.*?)' + [regex]::Escape($END_TAG_SUFFIX)
-    
-    $matches = [regex]::Matches($content, $pattern, [System.Text.RegularExpressions.RegexOptions]::Singleline)
-    
-    $fileList = @()
-    $index = 1
-    
-    foreach ($match in $matches) {
-        $filePath = $match.Groups['filepath'].Value.Trim()
-        # Remove the numbering suffix if present
-        if ($filePath -match '^(.*?)\s+\(numbering\s+\d+\s+of\s+\d+\)$') {
-            $filePath = $Matches[1]
-        }
-        
-        $fileList += [PSCustomObject]@{
-            Index = $index
-            Path = $filePath
-            Content = $match.Groups['content'].Value.Trim()
-        }
-        
-        $index++
-    }
-    
-    return $fileList
+$finalOut = $outRoot
+if (-not $NoToolDir) {
+    $finalOut = Join-Path -Path $outRoot -ChildPath $ToolName
+}
+Ensure-Directory -Path $finalOut
+
+$pattern = '^<<<FILE_START\s+(?<seq>\d+\s+of\s+\d+)>>>\s+(?<path>[^\r\n]+)\r?\n(?<content>.*?)\r?\n^<<<FILE_END\s+(?<seq2>\d+\s+of\s+\d+)>>>\s+(?<path2>[^\r\n]+)\s*$'
+$options = [System.Text.RegularExpressions.RegexOptions]::Multiline -bor [System.Text.RegularExpressions.RegexOptions]::Singleline
+$matches = [System.Text.RegularExpressions.Regex]::Matches($text, $pattern, $options)
+
+if ($matches.Count -eq 0) {
+    throw "No file entries found in packed file."
 }
 
-function Select-FilesForUnpacking {
-    param(
-        [array]$FileList,
-        [switch]$All,
-        [string]$Select,
-        [switch]$NonInteractive
-    )
-    
-    # If -All is specified, return all files
-    if ($All) {
-        return $FileList
+$entries = @()
+for ($i=0; $i -lt $matches.Count; $i++) {
+    $m = $matches[$i]
+    $seq1 = $m.Groups['seq'].Value
+    $seq2 = $m.Groups['seq2'].Value
+    $path1 = $m.Groups['path'].Value
+    $path2 = $m.Groups['path2'].Value
+
+    if ($seq1 -ne $seq2 -or $path1 -ne $path2) {
+        throw "Mismatched markers for an entry. Start: '$seq1 $path1' End: '$seq2 $path2'"
     }
-    
-    # If -Select is specified, parse the selection
-    if ($Select) {
-        $selectedIndices = @()
-        $selections = $Select -split ','
-        
-        foreach ($selection in $selections) {
-            $selection = $selection.Trim()
-            
-            # Check if it's a range (e.g., 1-5)
-            if ($selection -match '^\d+-\d+$') {
-                $rangeParts = $selection -split '-'
-                $start = [int]$rangeParts[0]
-                $end = [int]$rangeParts[1]
-                
-                for ($i = $start; $i -le $end; $i++) {
-                    if ($i -ge 1 -and $i -le $FileList.Count) {
-                        $selectedIndices += $i
-                    }
-                }
-            }
-            # Check if it's a single number
-            elseif ($selection -match '^\d+$') {
-                $index = [int]$selection
-                if ($index -ge 1 -and $index -le $FileList.Count) {
-                    $selectedIndices += $index
-                }
-            }
-        }
-        
-        # Return the selected files
-        return $FileList | Where-Object { $selectedIndices -contains $_.Index }
+
+    $entries += [pscustomobject]@{
+        Index   = $i + 1
+        Seq     = $seq1
+        RelPath = $path1
+        Content = $m.Groups['content'].Value
     }
-    
-    # If -NonInteractive is specified, throw an error
+}
+
+$chosen = @()
+
+if ($All) {
+    $chosen = 1..$entries.Count
+} elseif ($Select -and $Select.Trim() -ne "") {
+    $chosen = Parse-Selection -Input $Select -Max $entries.Count
+    if ($chosen.Count -eq 0) { throw "Selection resulted in 0 files." }
+} else {
     if ($NonInteractive) {
-        Write-Error "Non-interactive mode requires either -All or -Select parameter"
-        return $null
+        throw "No selection provided. Use -All or -Select when -NonInteractive is set."
     }
-    
-    # Interactive mode - show file list and prompt for selection
-    Write-Host "`nFiles in packed archive:" -ForegroundColor Cyan
-    Write-Host "----------------------------------------"
-    foreach ($file in $FileList) {
-        Write-Host ("{0,3}: {1}" -f $file.Index, $file.Path) -ForegroundColor Gray
-    }
-    Write-Host "----------------------------------------"
-    Write-Host "`nSelection options:" -ForegroundColor Yellow
-    Write-Host "  all          - Extract all files"
-    Write-Host "  1,3,7        - Extract specific files"
-    Write-Host "  2-5          - Extract a range of files"
-    Write-Host "  1,2-4,9      - Extract a combination"
+
     Write-Host ""
-    
-    do {
-        $selection = Read-Host "Enter your selection (or 'all' for all files)"
-        
-        if ($selection -eq "all") {
-            return $FileList
-        }
-        
-        # Try to parse the selection
-        $selectedFiles = Select-FilesForUnpacking -FileList $FileList -Select $selection
-        if ($selectedFiles -ne $null) {
-            return $selectedFiles
-        }
-        
-        Write-Host "Invalid selection. Please try again." -ForegroundColor Red
-    } while ($true)
+    Write-Host "Packed entries (in order):"
+    foreach ($e in $entries) {
+        Write-Host ("{0,4}. {1}" -f $e.Index, $e.RelPath)
+    }
+    Write-Host ""
+    $inp = Read-Host "Which files to extract? (all | 1,3-5 | 2-4,9)"
+    $chosen = Parse-Selection -Input $inp -Max $entries.Count
+    if ($chosen.Count -eq 0) {
+        Write-Host "No files selected. Nothing extracted."
+        return
+    }
 }
 
-function Unpack-Markdown {
-    param(
-        [string]$InputFile,
-        [string]$OutputDir,
-        [switch]$All,
-        [string]$Select,
-        [switch]$NonInteractive
-    )
-    
-    if (-not (Test-Path $InputFile)) {
-        Write-Error "Input file does not exist: $InputFile"
-        return $false
-    }
-    
-    Write-Host "`nUnpacking file: $InputFile" -ForegroundColor Green
-    Write-Host "Output directory: $OutputDir" -ForegroundColor Green
-    
-    # Create output directory
-    if (-not (Test-Path $OutputDir)) {
-        New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
-    }
-    
-    # Get file list from markdown
-    $fileList = Get-FileListFromMarkdown -InputFile $InputFile
-    
-    if ($fileList -eq $null -or $fileList.Count -eq 0) {
-        Write-Error "No files found in packed archive"
-        return $false
-    }
-    
-    # Select files to unpack
-    $selectedFiles = Select-FilesForUnpacking -FileList $fileList -All:$All.IsPresent -Select $Select -NonInteractive:$NonInteractive.IsPresent
-    
-    if ($selectedFiles -eq $null) {
-        return $false
-    }
-    
-    $fileCount = 0
-    
-    foreach ($fileInfo in $selectedFiles) {
-        $filePath = $fileInfo.Path
-        $fileContent = $fileInfo.Content
-        
-        $fullPath = Join-Path $OutputDir $filePath
-        
-        Write-Host "Extracting: $filePath" -ForegroundColor Gray
-        
-        # Create directory if needed
-        $dir = Split-Path $fullPath -Parent
-        if ($dir -and -not (Test-Path $dir)) {
-            New-Item -ItemType Directory -Path $dir -Force | Out-Null
-        }
-        
-        # Remove metadata line if present
-        if ($fileContent -match "^METADATA: .+?`r?`n`r?`n") {
-            $fileContent = $fileContent -replace "^METADATA: .+?`r?`n`r?`n", ""
-        }
-        
-        # Write file content
-        $fileContent | Out-File -FilePath $fullPath -Encoding UTF8 -NoNewline
-        
-        $fileCount++
-    }
-    
-    Write-Host "`nSuccessfully extracted $fileCount files to: $OutputDir" -ForegroundColor Green
-    return $true
-}
+$overwriteAll = $false
+$skipAll = $false
+$extracted = 0
 
-# Main execution
-switch ($Mode) {
-    "menu" {
-        while ($true) {
-            $choice = Show-Menu
-            
-            switch ($choice) {
-                "1" {
-                    $source = Read-Host "`nEnter source directory path"
-                    $target = Read-Host "Enter output markdown file path (e.g., C:\backup\files.md)"
-                    Pack-Directory -SourceDir $source -OutputFile $target
-                    Read-Host "`nPress Enter to continue..."
-                }
-                "2" {
-                    $source = Read-Host "`nEnter packed markdown file path"
-                    $target = Read-Host "Enter output directory path"
-                    
-                    # Check if we have non-interactive parameters
-                    if ($All -or $Select -or $NonInteractive) {
-                        Unpack-Markdown -InputFile $source -OutputDir $target -All:$All.IsPresent -Select $Select -NonInteractive:$NonInteractive.IsPresent
-                    } else {
-                        Unpack-Markdown -InputFile $source -OutputDir $target
-                    }
-                    Read-Host "`nPress Enter to continue..."
-                }
-                "3" {
-                    Write-Host "Goodbye!" -ForegroundColor Cyan
-                    exit
-                }
-                default {
-                    Write-Host "Invalid choice. Please try again." -ForegroundColor Red
-                    Start-Sleep -Seconds 1
-                }
+foreach ($idx in $chosen) {
+    $e = $entries[$idx - 1]
+
+    $rel = $e.RelPath -replace '/', [System.IO.Path]::DirectorySeparatorChar
+    $dirPart = Split-Path -Parent $rel
+    $leaf = Split-Path -Leaf $rel
+
+    if (-not $leaf.StartsWith("$ToolName=")) {
+        $leaf = "$ToolName=$leaf"
+    }
+
+    $destDir = if ($dirPart) { Join-Path -Path $finalOut -ChildPath $dirPart } else { $finalOut }
+    Ensure-Directory -Path $destDir
+
+    $destFull = Join-Path -Path $destDir -ChildPath $leaf
+
+    if (Test-Path -LiteralPath $destFull) {
+        if ($Force) {
+            # overwrite
+        } elseif ($skipAll) {
+            continue
+        } elseif ($overwriteAll) {
+            # overwrite
+        } elseif ($NonInteractive) {
+            throw "Refusing to overwrite existing file: $destFull (use -Force to overwrite)"
+        } else {
+            Write-Host ""
+            Write-Host "File exists: $destFull"
+            $ans = Read-Host "Overwrite? (Y)es/(N)o/(A)ll overwrite/(S)kip all"
+            switch ($ans.Trim().ToLower()) {
+                'y' { }
+                'n' { continue }
+                'a' { $overwriteAll = $true }
+                's' { $skipAll = $true; continue }
+                default { continue }
             }
         }
     }
-    "pack" {
-        if (-not $SourcePath -or -not $TargetPath) {
-            Write-Error "SourcePath and TargetPath are required for pack mode"
-            exit 1
-        }
-        Pack-Directory -SourceDir $SourcePath -OutputFile $TargetPath
-    }
-    "unpack" {
-        if (-not $SourcePath -or -not $TargetPath) {
-            Write-Error "SourcePath and TargetPath are required for unpack mode"
-            exit 1
-        }
-        Unpack-Markdown -InputFile $SourcePath -OutputDir $TargetPath -All:$All.IsPresent -Select $Select -NonInteractive:$NonInteractive.IsPresent
-    }
+
+    Set-Content -LiteralPath $destFull -Value $e.Content -Encoding Default -NoNewline
+    $extracted++
 }
+
+Write-Host "Unpacked $extracted file(s) to: $finalOut"
+}
+
+try {
+switch ($Command) {
+'pack' {
+Pack-Path -Source $SourcePath -OutputFile $TargetPath -Tool $ToolName
+}
+'unpack' {
+Unpack-PackedFile -InputFile $SourcePath -OutputDir $TargetPath
+}
+}
+}
+catch {
+Write-Error $_
+exit 1

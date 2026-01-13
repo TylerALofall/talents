@@ -1,0 +1,41 @@
+═══════════════════════════════════════════════════════════════
+                    EVIDENCE LINKING TEMPLATE
+═══════════════════════════════════════════════════════════════
+
+LINKED_TO_EVENT: {{EVENT_ID}}
+
+DOCUMENT REFERENCE:
+-------------------
+DOCUMENT_NAME: {{DOCUMENT_NAME}}
+SOURCE: {{ORIGINAL_SOURCE}}
+TYPE: {{document/exhibit/transcript/etc}}
+
+CITATION:
+---------
+ECF: {{ECF_NUMBER}}
+PAGE: {{PAGE_NUMBER}}
+LINE: {{LINE_NUMBER or N/A}}
+
+QUOTE:
+------
+EXACT_QUOTE: "{{Word for word from document}}"
+
+SCREENSHOT CONFIRMATION:
+------------------------
+SCREENSHOT_STATUS: {{PENDING/CAPTURED/VERIFIED}}
+EVIDENCE_PINPOINT: {{Location in parent document}}
+SCREENSHOT_FILENAME: {{FILENAME}}
+SCREENSHOT_PATH: {{FILE_PATH}}
+
+VALIDATION:
+-----------
+VALIDATED: {{true/false}}
+VALIDATED_BY: {{AGENT_NAME or MODERATOR}}
+VALIDATED_AT: {{TIMESTAMP}}
+
+CREATED:
+--------
+LINKED_BY: {{AGENT_NAME}}
+LINKED_AT: {{TIMESTAMP}}
+
+═══════════════════════════════════════════════════════════════

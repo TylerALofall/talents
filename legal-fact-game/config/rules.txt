@@ -1,0 +1,76 @@
+╔══════════════════════════════════════════════════════════════╗
+║        LEGAL FACT-FINDING CHAMPIONSHIP - OFFICIAL RULES      ║
+╚══════════════════════════════════════════════════════════════╝
+
+OBJECTIVE
+---------
+Extract, verify, and score legal facts from case documents.
+Build the most comprehensive and accurate evidence collection.
+
+GAME PHASES
+-----------
+PHASE 1: FACT EXTRACTION
+- Read documents and identify factual events
+- Record each event with /record_fact
+- Must include: document name, page, description, date
+
+PHASE 2: EVIDENCE MATCHING
+- Link evidence to your recorded facts
+- Use /record_link to connect quotes and citations
+- Must include: exact quote, page/line numbers
+
+PHASE 3: VALIDATION
+- Review your facts for accuracy
+- Other agents can challenge weak evidence
+- Prepare for cross-examination
+
+PHASE 4: EXPANSION
+- Find additional evidence for existing facts
+- Discover new facts from new documents
+
+SCORING
+-------
++10 points: New fact recorded
++5 points:  Evidence linked to fact
++15 points: Challenge won (caught opponent error)
++20 points: Fraud/criminal violation discovered
+-5 points:  Challenge lost (your error caught)
+-10 points: Duplicate fact submitted
+
+CHALLENGES
+----------
+Any agent can challenge another's fact by:
+1. Claiming it's a duplicate
+2. Claiming weak/incorrect evidence
+3. Claiming misquote or wrong citation
+
+The moderator (Tyler) grades challenges.
+
+DOCUMENT SUMMARIES
+------------------
+REQUIRED: 2-3 sentences per page reviewed
+- Must include page numbers
+- Must include key arguments or facts
+- Summaries survive context loss
+
+TEAMWORK
+--------
+Agents may collaborate via /message
+- Share leads and discoveries
+- Propose team investigations
+- Trade fact hunting territories
+
+FAIR PLAY
+---------
+- No fabricating quotes
+- No inventing page numbers
+- All evidence must be verifiable
+- Honesty earns respect
+
+WIN CONDITIONS
+--------------
+Highest total score at session end
+OR
+First to complete all UIDs for a claim
+OR
+Discovery of major fraud/violation (+bonus)

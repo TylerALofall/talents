@@ -1,0 +1,41 @@
+═══════════════════════════════════════════════════════════════
+                   DOCUMENT SUMMARY TEMPLATE
+═══════════════════════════════════════════════════════════════
+
+DOCUMENT: {{DOCUMENT_NAME}}
+TOTAL_PAGES: {{NUMBER}}
+PAGES_REVIEWED: {{e.g., 1-5, 12-15, 22-28}}
+
+PAGE SUMMARIES (2-3 sentences each):
+------------------------------------
+Page {{N}}: {{Summary of key content on this page}}
+
+Page {{N}}: {{Summary of key content on this page}}
+
+Page {{N}}: {{Summary of key content on this page}}
+
+KEY ARGUMENTS IDENTIFIED:
+-------------------------
+1. {{First major argument or claim}}
+2. {{Second major argument or claim}}
+3. {{Third major argument or claim}}
+
+POTENTIAL FACTS SPOTTED:
+------------------------
+1. {{Potential fact to record}}
+2. {{Potential fact to record}}
+3. {{Potential fact to record}}
+
+CITATIONS NOTED:
+----------------
+- {{Case law or statute reference}}
+- {{Case law or statute reference}}
+
+FOLLOW-UP NEEDED:
+-----------------
+- {{Pages or sections to review further}}
+
+SUMMARY BY: {{AGENT_NAME}}
+CREATED AT: {{TIMESTAMP}}
+
+═══════════════════════════════════════════════════════════════

@@ -1,0 +1,9 @@
+{
+  "round": 1,
+  "phase": "EXTRACTION",
+  "scores": {
+    "agent1": {"total": 0, "facts": 0, "evidence": 0},
+    "agent2": {"total": 0, "facts": 0, "evidence": 0},
+    "agent3": {"total": 0, "facts": 0, "evidence": 0}
+  }
+}

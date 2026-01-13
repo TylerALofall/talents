@@ -1,0 +1,7 @@
+{
+  "agents": [
+    {"id": 1, "name": "QWEN3", "custom_name": "", "persona": "", "score": 0, "facts_found": 0},
+    {"id": 2, "name": "DOODLES", "custom_name": "", "persona": "", "score": 0, "facts_found": 0},
+    {"id": 3, "name": "TURBO", "custom_name": "", "persona": "", "score": 0, "facts_found": 0}
+  ]
+}

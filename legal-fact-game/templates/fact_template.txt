@@ -1,0 +1,47 @@
+═══════════════════════════════════════════════════════════════
+                      FACT RECORDING TEMPLATE
+═══════════════════════════════════════════════════════════════
+
+DOCUMENT_NAME: {{DOCUMENT_NAME}}
+PAGE_NUMBER: {{PAGE_NUMBER}}
+
+EVENT DETAILS:
+--------------
+TEMP_FACT_ID: {{DOCUMENT_NAME}}-p{{PAGE_NUMBER}}-n{{SEQUENCE}}
+EVENT_ID: EVENT_{{NUMBER}}
+
+DATE INFORMATION:
+-----------------
+DOE (Date of Event): {{YYYY-MM-DD}}
+DATE_RANGE_START: {{YYYY-MM-DD}}
+DATE_RANGE_END: {{YYYY-MM-DD}}
+CHRONOLOGY_ANCHOR: {{DATE}}
+
+PARTIES:
+--------
+DEFENDANTS_INVOLVED: {{DEFENDANT_NAMES}}
+DEFENDANT_ID: {{1-9 or 0 for joint}}
+
+DESCRIPTION:
+------------
+DESCRIPTION_OF_EVENT: {{Single sentence neutral description}}
+
+DUTY_BREACHED: {{Named duty or policy violated}}
+
+UID ASSIGNMENT (if known):
+--------------------------
+CLAIM_ID: {{100-900}}
+ELEMENT_ID: {{10-90}}
+DEFENSE_ID: {{Replaces CLAIM_ID for immunity/fraud}}
+POTENTIAL_UID: {{Up to 3 options}}
+
+STATUS:
+-------
+VALIDATION_STATUS: PENDING
+EVIDENCE_LINKED: NO
+SCREENSHOT_STATUS: NONE
+
+CREATED_BY: {{AGENT_NAME}}
+CREATED_AT: {{TIMESTAMP}}
+
+═══════════════════════════════════════════════════════════════
